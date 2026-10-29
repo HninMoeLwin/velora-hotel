@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import UserMenu from "./components/UserMenu";
+import CustomerSite from "./components/CustomerSite";
 import {
   Hotel,
   LayoutDashboard,
@@ -67,7 +68,7 @@ function useStore(key, fallback) {
 
 function Field({ label, name, defaultValue, type = "text", required = true }) {
   return (
-    <label className="block text-xs font-bold text-slate-600">
+    <label className="block text-xs font-bold text-[#596257]">
       {label}
       <input
         name={name}
@@ -75,7 +76,7 @@ function Field({ label, name, defaultValue, type = "text", required = true }) {
         defaultValue={defaultValue}
         required={required}
         min={type === "number" ? 0 : undefined}
-        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-normal outline-none focus:border-amber-500"
+        className="mt-2 w-full rounded-xl border border-[#dedacf] bg-white px-3 py-3 text-sm font-normal text-[#26342b] outline-none transition focus:border-[#b39870] focus:ring-2 focus:ring-[#b39870]/20"
       />
     </label>
   );
@@ -83,15 +84,15 @@ function Field({ label, name, defaultValue, type = "text", required = true }) {
 
 function Modal({ title, close, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/70 p-3 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[#d9b77c]/30 bg-[#fffaf3] shadow-[0_20px_60px_rgba(16,24,40,0.25)]">
-        <div className="flex items-center justify-between border-b border-[#f0e3c6] bg-[#101828] px-5 py-4 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#17211b]/75 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[#d8bd91]/35 bg-[#fbfaf7] shadow-[0_24px_70px_rgba(16,24,20,0.3)]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-[#1d2822] px-5 py-4 text-white">
           <h2 className="text-xl font-extrabold text-white">{title}</h2>
-          <button onClick={close} className="rounded-xl border border-white/15 bg-white/5 p-2 text-[#d9b77c] transition hover:bg-white/10" aria-label="Close modal">
+          <button onClick={close} className="rounded-xl border border-white/15 bg-white/5 p-2 text-[#d8bd91] transition hover:bg-white/10" aria-label="Close modal">
             <X size={18} />
           </button>
         </div>
-        <div className="p-5 text-slate-700">{children}</div>
+        <div className="p-5 text-[#374238]">{children}</div>
       </div>
     </div>
   );
@@ -211,6 +212,7 @@ export default function App() {
   });
 
   const [page, setPage] = useState("Overview");
+  const [activeView, setActiveView] = useState("website");
   const [mobile, setMobile] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -356,6 +358,19 @@ export default function App() {
   const panelClass = darkMode ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-800";
   const subtleClass = darkMode ? "text-slate-300" : "text-slate-500";
 
+  if (activeView === "website") {
+    return (
+      <CustomerSite
+        rooms={rooms}
+        bookings={bookings}
+        discounts={discounts}
+        settings={settings}
+        onAdmin={() => setActiveView("admin")}
+        onBookingCreated={(booking) => setBookings((prev) => [booking, ...prev])}
+      />
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#1e293b,_#020817_58%)] p-6">
@@ -431,6 +446,9 @@ export default function App() {
               </div>
 
               <p className="mt-5 text-center text-xs text-slate-500">Demo login: admin@velorahotel.com / demo123</p>
+              <button type="button" onClick={() => setActiveView("website")} className="mt-4 w-full text-center text-xs font-semibold text-amber-300 hover:text-amber-200">
+                Return to customer website
+              </button>
             </form>
           </div>
         </div>
@@ -507,6 +525,13 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveView("website")}
+                className={`hidden rounded-full border px-3 py-2 text-xs font-semibold sm:block ${darkMode ? "border-slate-700 text-slate-300 hover:bg-slate-900" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+              >
+                View website
+              </button>
               <span className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 sm:flex">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" /> Demo is live
               </span>
@@ -997,11 +1022,11 @@ export default function App() {
       {profileModal && (
         <Modal title="Profile" close={() => setProfileModal(false)}>
           <div className="space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#101828] text-2xl font-black text-[#d9b77c]">A</div>
+            <div className="flex items-center gap-4 rounded-2xl border border-[#e8e4da] bg-[#f7f5f0] p-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1d2822] text-2xl font-black text-[#d8bd91] ring-4 ring-[#eee8dc]">A</div>
               <div>
-                <p className="text-lg font-extrabold">{profile.name}</p>
-                <p className="text-sm text-slate-500">{profile.role}</p>
+                <p className="text-lg font-extrabold text-[#26342b]">{profile.name}</p>
+                <p className="mt-1 text-sm text-[#858477]">{profile.role}</p>
               </div>
             </div>
 
@@ -1022,7 +1047,7 @@ export default function App() {
                 setProfileModal(false);
                 notify("Profile updated successfully");
               }}
-              className="mt-4 w-full rounded-xl bg-[#101828] px-5 py-3 text-sm font-bold text-white"
+              className="mt-4 w-full rounded-xl bg-[#1d2822] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#34483c] focus:outline-none focus:ring-2 focus:ring-[#b39870] focus:ring-offset-2"
             >
               Save profile
             </button>

@@ -1,4 +1,12 @@
-export default function Field({ label, name, defaultValue, type = "text", required = true }) {
+type FieldProps = {
+  label: string;
+  name: string;
+  defaultValue?: string | number;
+  type?: "text" | "number" | "email" | "password" | "date" | "tel";
+  required?: boolean;
+};
+
+export default function Field({ label, name, defaultValue, type = "text", required = true }: FieldProps) {
   return (
     <label className="block text-xs font-bold text-slate-600">
       {label}

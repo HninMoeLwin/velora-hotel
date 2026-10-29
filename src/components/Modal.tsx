@@ -1,6 +1,13 @@
+import type { ReactNode } from "react";
 import { X } from "lucide-react";
 
-export default function Modal({ title, close, children }) {
+type ModalProps = {
+  title: string;
+  close: () => void;
+  children: ReactNode;
+};
+
+export default function Modal({ title, close, children }: ModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/70 p-3 backdrop-blur-sm">
       <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[#d9b77c]/30 bg-[#fffaf3] shadow-[0_20px_60px_rgba(16,24,40,0.25)]">

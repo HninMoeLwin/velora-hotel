@@ -343,13 +343,13 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
             </label>
             <label className="flex items-center gap-4 bg-[#fbfaf7] px-5 py-4">
               <Users size={17} className="shrink-0 text-[#aa8d64]" />
-              <span className="min-w-0 flex-1">
+              <span className="relative min-w-0 flex-1">
                 <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#77796f]">Guests</span>
-                <select aria-label="Number of guests" value={guestCount} onChange={(event) => setGuestCount(event.target.value)} className="mt-1 w-full bg-transparent text-xs font-semibold outline-none">
+                <select aria-label="Number of guests" value={guestCount} onChange={(event) => setGuestCount(event.target.value)} className="mt-1 w-full appearance-none bg-transparent pr-6 text-xs font-semibold text-[#1d2822] outline-none focus:text-[#a47b46]">
                   {[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count} guest{count > 1 ? "s" : ""}</option>)}
                 </select>
+                <ChevronDown size={14} className="pointer-events-none absolute bottom-0 right-0 text-[#a47b46]" />
               </span>
-              <ChevronDown size={14} className="text-[#77796f]" />
             </label>
             <button type="submit" className="flex items-center justify-center gap-3 bg-[#b39870] px-7 py-5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#1d2822] transition hover:bg-[#c8ac83]">
               Find a room <ArrowRight size={15} />

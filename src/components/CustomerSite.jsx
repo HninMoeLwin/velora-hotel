@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowRight,
@@ -50,13 +50,68 @@ function RoomImage({ room, className = "" }) {
   );
 }
 
+function RoomCard({ room, index, onSelect }) {
+  const nightly = room.price * (1 - (room.discount || 0) / 100);
+
+  return (
+    <article key={room.id} className="group bg-[#fbfaf7]">
+      <div className="relative aspect-[1.38] overflow-hidden bg-[#d8d2c5]">
+        <RoomImage room={room} className="h-full w-full" />
+        {room.discount > 0 && <span className="absolute left-4 top-4 bg-[#b39870] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[#1d2822]">{room.discount}% off</span>}
+        <span className={`absolute bottom-4 right-4 px-3 py-2 text-[9px] font-semibold uppercase tracking-widest ${room.status === "Available" ? "bg-[#fbfaf7]/95 text-[#555a51]" : "bg-[#1d2822]/90 text-white"}`}>
+          {room.status === "Available" ? (index === 0 ? "Guest favorite" : "Thoughtful design") : "Currently unavailable"}
+        </span>
+      </div>
+      <div className="p-6 sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.19em] text-[#a47b46]">{room.type}</p>
+            <h3 className="mt-2 font-serif text-2xl font-medium">{room.name}</h3>
+          </div>
+          <Heart size={18} className="mt-1 shrink-0 text-[#99958b]" />
+        </div>
+        <p className="mt-3 min-h-[48px] text-xs leading-6 text-[#77796f]">{room.description}</p>
+        <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-y border-[#e9e5db] py-4 text-[10px] text-[#6c7068]">
+          <span className="flex items-center gap-1.5"><BedDouble size={14} className="text-[#a47b46]" />{room.beds}</span>
+          <span className="flex items-center gap-1.5"><Users size={14} className="text-[#a47b46]" />Up to {room.capacity}</span>
+          {room.amenities.slice(0, 2).map((amenity) => <span key={amenity} className="flex items-center gap-1.5"><Check size={13} className="text-[#a47b46]" />{amenity}</span>)}
+        </div>
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <div>
+            <span className="font-serif text-xl">{money(nightly)}</span>
+            <span className="ml-1 text-[10px] text-[#77796f]">/ night</span>
+          </div>
+          <button
+            onClick={() => onSelect(room)}
+            className="flex items-center gap-2 border-b border-[#b39870] pb-1 text-[9px] font-bold uppercase tracking-[0.14em] transition hover:text-[#a47b46]"
+          >
+            View details <ArrowRight size={13} />
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function CustomerSite({ rooms, bookings, discounts, settings, onAdmin, onBookingCreated }) {
   const [checkIn, setCheckIn] = useState(defaultCheckIn);
   const [checkOut, setCheckOut] = useState(defaultCheckOut);
   const [guestCount, setGuestCount] = useState("2");
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [bookingStep, setBookingStep] = useState(false);
+  const [sitePage, setSitePage] = useState(() => window.location.hash === "#all-rooms" ? "rooms" : "home");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [confirmation, setConfirmation] = useState("");
+
+  useEffect(() => {
+    const syncPage = () => setSitePage(window.location.hash === "#all-rooms" ? "rooms" : "home");
+    window.addEventListener("hashchange", syncPage);
+    return () => window.removeEventListener("hashchange", syncPage);
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [sitePage]);
 
   const availableRooms = useMemo(
     () =>
@@ -123,8 +178,29 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
     };
     onBookingCreated(booking);
     setSelectedRoom(null);
+    setBookingStep(false);
     setConfirmation(`Thank you, ${guest}. Your request ${booking.id} has been sent to ${settings.name}. We'll be in touch soon.`);
     event.currentTarget.reset();
+  };
+
+  const selectRoom = (room) => {
+    setConfirmation("");
+    setGuestCount(String(Math.min(Number(guestCount), room.capacity)));
+    setSelectedRoom(room);
+    setBookingStep(false);
+  };
+
+  const closeRoomDialog = () => {
+    setSelectedRoom(null);
+    setBookingStep(false);
+  };
+
+  const navigateToSection = (event, section) => {
+    if (sitePage !== "rooms") return;
+    event.preventDefault();
+    window.history.pushState(null, "", `#${section}`);
+    setSitePage("home");
+    window.setTimeout(() => document.getElementById(section)?.scrollIntoView({ behavior: "smooth" }), 0);
   };
 
   const roomPrice = selectedRoom
@@ -148,17 +224,17 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
           </a>
 
           <nav className="hidden items-center gap-9 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#555a51] md:flex">
-            <a className="transition hover:text-[#a47b46]" href="#stay">The stay</a>
-            <a className="transition hover:text-[#a47b46]" href="#rooms">Rooms & suites</a>
-            <a className="transition hover:text-[#a47b46]" href="#experience">Experiences</a>
-            <a className="transition hover:text-[#a47b46]" href="#contact">Contact</a>
+            <a onClick={(event) => navigateToSection(event, "stay")} className="transition hover:text-[#a47b46]" href="#stay">The stay</a>
+            <a className="transition hover:text-[#a47b46]" href="#all-rooms">Rooms & suites</a>
+            <a onClick={(event) => navigateToSection(event, "experience")} className="transition hover:text-[#a47b46]" href="#experience">Experiences</a>
+            <a onClick={(event) => navigateToSection(event, "contact")} className="transition hover:text-[#a47b46]" href="#contact">Contact</a>
           </nav>
 
           <div className="hidden items-center gap-5 md:flex">
             <button onClick={onAdmin} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#77796f] transition hover:text-[#20251f]">
               Admin
             </button>
-            <a href="#rooms" className="group flex items-center gap-3 bg-[#1d2822] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:bg-[#34483c]">
+            <a href="#all-rooms" className="group flex items-center gap-3 bg-[#1d2822] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:bg-[#34483c]">
               Book your stay <ArrowUpRight size={14} className="text-[#d8bd91] transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
           </div>
@@ -169,15 +245,54 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
         </div>
         {mobileMenu && (
           <nav className="absolute left-0 right-0 top-full flex flex-col gap-1 border-t border-[#e8e4da] bg-[#fbfaf7] p-5 shadow-lg md:hidden">
-            {["The stay", "Rooms & suites", "Experiences", "Contact"].map((item, index) => (
-              <a key={item} onClick={() => setMobileMenu(false)} className="py-3 text-xs font-semibold uppercase tracking-widest" href={["#stay", "#rooms", "#experience", "#contact"][index]}>{item}</a>
-            ))}
+            {["The stay", "Rooms & suites", "Experiences", "Contact"].map((item, index) => {
+              const href = ["#stay", "#all-rooms", "#experience", "#contact"][index];
+              const section = ["stay", "", "experience", "contact"][index];
+              return (
+                <a key={item} onClick={(event) => { setMobileMenu(false); if (section) navigateToSection(event, section); }} className="py-3 text-xs font-semibold uppercase tracking-widest" href={href}>{item}</a>
+              );
+            })}
             <button onClick={onAdmin} className="border-t border-[#e8e4da] py-3 text-left text-xs font-semibold uppercase tracking-widest">Admin portal</button>
           </nav>
         )}
       </header>
 
       <main>
+        {confirmation && (
+          <div className="mx-auto mt-8 flex max-w-6xl items-start gap-3 border border-[#c9d7c8] bg-[#eef4ec] px-5 py-4 text-sm text-[#34483c]">
+            <BadgeCheck size={19} className="mt-0.5 shrink-0" />
+            <p className="flex-1 leading-6">{confirmation}</p>
+            <button onClick={() => setConfirmation("")} aria-label="Dismiss confirmation"><X size={17} /></button>
+          </div>
+        )}
+
+        {sitePage === "rooms" ? (
+          <section className="min-h-[65vh] bg-[#eeece5] px-6 py-16 lg:px-10 lg:py-24">
+            <div className="mx-auto max-w-7xl">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#a47b46]">Find your perfect stay</p>
+              <div className="mt-4 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                <div>
+                  <h1 className="font-serif text-4xl font-normal tracking-tight sm:text-5xl">All rooms & suites.</h1>
+                  <p className="mt-4 max-w-xl text-sm leading-6 text-[#6c7068]">Explore every room currently listed by {settings.name}. Select a room to see its details and booking options.</p>
+                </div>
+                <p className="text-sm text-[#6c7068]">{rooms.length} room {rooms.length === 1 ? "type" : "types"} listed</p>
+              </div>
+
+              {rooms.length ? (
+                <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {rooms.map((room, index) => <RoomCard key={room.id} room={room} index={index} onSelect={selectRoom} />)}
+                </div>
+              ) : (
+                <div className="mt-10 border border-[#d9d4c8] bg-[#fbfaf7] px-6 py-12 text-center">
+                  <BedDouble className="mx-auto text-[#a47b46]" size={25} />
+                  <h2 className="mt-4 font-serif text-2xl">No rooms listed yet</h2>
+                  <p className="mt-2 text-sm text-[#77796f]">Please check back soon for available room options.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : (
+          <>
         <section id="home" className="relative min-h-[610px] overflow-hidden bg-[#28342d] lg:min-h-[690px]">
           <img
             src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=2200&q=90"
@@ -242,14 +357,6 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
           </form>
         </section>
 
-        {confirmation && (
-          <div className="mx-auto mt-8 flex max-w-6xl items-start gap-3 border border-[#c9d7c8] bg-[#eef4ec] px-5 py-4 text-sm text-[#34483c]">
-            <BadgeCheck size={19} className="mt-0.5 shrink-0" />
-            <p className="flex-1 leading-6">{confirmation}</p>
-            <button onClick={() => setConfirmation("")} aria-label="Dismiss confirmation"><X size={17} /></button>
-          </div>
-        )}
-
         <section id="stay" className="mx-auto grid max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-20 lg:px-10 lg:py-28">
           <div className="relative order-2 lg:order-1">
             <div className="aspect-[4/3] overflow-hidden bg-[#dfd9cb]">
@@ -297,54 +404,20 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
 
             {availableRooms.length ? (
               <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {availableRooms.map((room, index) => {
-                  const nightly = room.price * (1 - (room.discount || 0) / 100);
-                  return (
-                    <article key={room.id} className="group bg-[#fbfaf7]">
-                      <div className="relative aspect-[1.38] overflow-hidden bg-[#d8d2c5]">
-                        <RoomImage room={room} className="h-full w-full" />
-                        {room.discount > 0 && <span className="absolute left-4 top-4 bg-[#b39870] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[#1d2822]">{room.discount}% off</span>}
-                        <span className="absolute bottom-4 right-4 bg-[#fbfaf7]/95 px-3 py-2 text-[9px] font-semibold uppercase tracking-widest text-[#555a51]">{index === 0 ? "Guest favorite" : "Thoughtful design"}</span>
-                      </div>
-                      <div className="p-6 sm:p-7">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-[9px] font-bold uppercase tracking-[0.19em] text-[#a47b46]">{room.type}</p>
-                            <h3 className="mt-2 font-serif text-2xl font-medium">{room.name}</h3>
-                          </div>
-                          <Heart size={18} className="mt-1 shrink-0 text-[#99958b]" />
-                        </div>
-                        <p className="mt-3 min-h-[48px] text-xs leading-6 text-[#77796f]">{room.description}</p>
-                        <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-y border-[#e9e5db] py-4 text-[10px] text-[#6c7068]">
-                          <span className="flex items-center gap-1.5"><BedDouble size={14} className="text-[#a47b46]" />{room.beds}</span>
-                          <span className="flex items-center gap-1.5"><Users size={14} className="text-[#a47b46]" />Up to {room.capacity}</span>
-                          {room.amenities.slice(0, 2).map((amenity) => <span key={amenity} className="flex items-center gap-1.5"><Check size={13} className="text-[#a47b46]" />{amenity}</span>)}
-                        </div>
-                        <div className="mt-5 flex items-end justify-between gap-3">
-                          <div>
-                            <span className="font-serif text-xl">{money(nightly)}</span>
-                            <span className="ml-1 text-[10px] text-[#77796f]">/ night</span>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setConfirmation("");
-                              setSelectedRoom(room);
-                            }}
-                            className="flex items-center gap-2 border-b border-[#b39870] pb-1 text-[9px] font-bold uppercase tracking-[0.14em] transition hover:text-[#a47b46]"
-                          >
-                            Choose room <ArrowRight size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                {availableRooms.slice(0, 3).map((room, index) => <RoomCard key={room.id} room={room} index={index} onSelect={selectRoom} />)}
               </div>
             ) : (
               <div className="mt-10 border border-[#d9d4c8] bg-[#fbfaf7] px-6 py-12 text-center">
                 <CalendarDays className="mx-auto text-[#a47b46]" size={25} />
                 <h3 className="mt-4 font-serif text-2xl">No rooms for these dates</h3>
                 <p className="mt-2 text-sm text-[#77796f]">Try different dates or a smaller guest count to see what’s available.</p>
+              </div>
+            )}
+            {rooms.length > 0 && (
+              <div className="mt-9 text-center">
+                <a href="#all-rooms" className="inline-flex items-center gap-2 border-b border-[#b39870] pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#1d2822] transition hover:text-[#a47b46]">
+                  View all {rooms.length} rooms <ArrowRight size={14} />
+                </a>
               </div>
             )}
           </div>
@@ -374,6 +447,8 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
             </div>
           </div>
         </section>
+          </>
+        )}
       </main>
 
       <footer id="contact" className="bg-[#fbfaf7] px-6 py-12 lg:px-10">
@@ -401,7 +476,57 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
         </div>
       </footer>
 
-      {selectedRoom && (
+      {selectedRoom && !bookingStep && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#111812]/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="room-detail-title">
+          <div className="my-auto w-full max-w-3xl overflow-hidden bg-[#fbfaf7] shadow-2xl">
+            <div className="relative h-64 bg-[#28342d] sm:h-80">
+              <RoomImage room={selectedRoom} className="h-full w-full" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#101915]/75 via-transparent to-transparent" />
+              <button onClick={closeRoomDialog} aria-label="Close room details" className="absolute right-4 top-4 rounded-full bg-[#fbfaf7]/90 p-2 text-[#1d2822] hover:bg-white"><X size={19} /></button>
+              <span className="absolute bottom-5 left-6 text-[10px] font-bold uppercase tracking-[0.2em] text-[#e2c99e]">{selectedRoom.type}</span>
+            </div>
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 id="room-detail-title" className="font-serif text-3xl sm:text-4xl">{selectedRoom.name}</h2>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-[#77796f]">{selectedRoom.description}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-serif text-2xl">{money(selectedRoom.price * (1 - (selectedRoom.discount || 0) / 100))}</p>
+                  <p className="text-[10px] text-[#77796f]">per night{selectedRoom.discount > 0 ? ` · ${selectedRoom.discount}% off` : ""}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-3 border-y border-[#e9e5db] py-5 text-xs text-[#555a51] sm:grid-cols-2">
+                <p className="flex items-center gap-2"><BedDouble size={16} className="text-[#a47b46]" />{selectedRoom.beds}</p>
+                <p className="flex items-center gap-2"><Users size={16} className="text-[#a47b46]" />Up to {selectedRoom.capacity} guests</p>
+              </div>
+              <div className="mt-5">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a47b46]">Room amenities</h3>
+                {selectedRoom.amenities.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedRoom.amenities.map((amenity) => (
+                      <span key={amenity} className="flex items-center gap-2 rounded-full bg-[#eeece5] px-3 py-2 text-xs text-[#555a51]"><Check size={13} className="text-[#a47b46]" />{amenity}</span>
+                    ))}
+                  </div>
+                ) : <p className="mt-3 text-xs text-[#77796f]">Please contact us for amenity details.</p>}
+              </div>
+              <div className="mt-7 flex flex-col-reverse gap-3 border-t border-[#e8e4da] pt-5 sm:flex-row sm:justify-end">
+                <button onClick={closeRoomDialog} className="border border-[#dedacf] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#555a51] hover:bg-[#f3f1eb]">Close</button>
+                <button
+                  onClick={() => setBookingStep(true)}
+                  disabled={selectedRoom.status !== "Available"}
+                  className="flex items-center justify-center gap-2 bg-[#1d2822] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-white transition hover:bg-[#34483c] disabled:cursor-not-allowed disabled:bg-[#9a9b91]"
+                >
+                  {selectedRoom.status === "Available" ? "Book this room" : "Currently unavailable"} <ArrowRight size={14} className="text-[#d8bd91]" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedRoom && bookingStep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#111812]/75 p-4 backdrop-blur-sm">
           <div className="my-auto grid w-full max-w-3xl overflow-hidden bg-[#fbfaf7] shadow-2xl md:grid-cols-[0.8fr_1.2fr]">
             <div className="relative hidden min-h-[600px] bg-[#28342d] md:block">
@@ -416,7 +541,8 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
               </div>
             </div>
             <div className="relative p-6 sm:p-8">
-              <button onClick={() => setSelectedRoom(null)} aria-label="Close booking form" className="absolute right-4 top-4 p-2 text-[#77796f] hover:text-[#1d2822]"><X size={19} /></button>
+              <button onClick={closeRoomDialog} aria-label="Close booking form" className="absolute right-4 top-4 p-2 text-[#77796f] hover:text-[#1d2822]"><X size={19} /></button>
+              <button type="button" onClick={() => setBookingStep(false)} className="mb-4 text-[9px] font-bold uppercase tracking-[0.14em] text-[#a47b46] hover:text-[#1d2822]">Back to room details</button>
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#a47b46]">Your stay starts here</p>
               <h2 className="mt-2 font-serif text-3xl">Request a booking</h2>
               <p className="mt-2 text-xs leading-5 text-[#77796f]">Share a few details and our team will confirm your reservation.</p>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import UserMenu from "./components/UserMenu";
 import CustomerSite from "./components/CustomerSite";
+import veloraLogo from "./assets/velora-logo.svg";
 import {
   Hotel,
   LayoutDashboard,
@@ -499,7 +500,7 @@ export default function App() {
       <div className="flex min-h-screen">
         <aside className={`fixed inset-y-0 left-0 z-40 flex w-[250px] flex-col ${darkMode ? "bg-[#0b1220] text-white" : "bg-[#101828] text-white"} transition-transform lg:static lg:translate-x-0 ${mobile ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="flex h-[82px] items-center gap-3 border-b border-white/10 px-5">
-            <div className="rounded-xl bg-[#d9b77c] p-3 text-[#101828]"><Hotel size={22} /></div>
+            <img src={veloraLogo} alt="" className="h-12 w-12 shrink-0" />
             <div>
               <p className="font-serif text-xl font-bold">velora<span className="text-amber-300">.</span></p>
               <p className="text-[10px] uppercase tracking-[.2em] text-slate-400">Hotel management</p>

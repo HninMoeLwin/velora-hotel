@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import veloraLogo from "../assets/velora-logo.svg";
 import {
   ArrowDown,
   ArrowRight,
@@ -50,7 +51,7 @@ function RoomImage({ room, className = "" }) {
   );
 }
 
-function RoomCard({ room, index, onSelect }) {
+function RoomCard({ room, index, onSelect, availableForDates = true }) {
   const nightly = room.price * (1 - (room.discount || 0) / 100);
 
   return (
@@ -58,8 +59,8 @@ function RoomCard({ room, index, onSelect }) {
       <div className="relative aspect-[1.38] overflow-hidden bg-[#d8d2c5]">
         <RoomImage room={room} className="h-full w-full" />
         {room.discount > 0 && <span className="absolute left-4 top-4 bg-[#b39870] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[#1d2822]">{room.discount}% off</span>}
-        <span className={`absolute bottom-4 right-4 px-3 py-2 text-[9px] font-semibold uppercase tracking-widest ${room.status === "Available" ? "bg-[#fbfaf7]/95 text-[#555a51]" : "bg-[#1d2822]/90 text-white"}`}>
-          {room.status === "Available" ? (index === 0 ? "Guest favorite" : "Thoughtful design") : "Currently unavailable"}
+        <span className={`absolute bottom-4 right-4 px-3 py-2 text-[9px] font-semibold uppercase tracking-widest ${availableForDates ? "bg-[#fbfaf7]/95 text-[#555a51]" : "bg-[#1d2822]/90 text-white"}`}>
+          {availableForDates ? (index === 0 ? "Guest favorite" : "Thoughtful design") : "Unavailable for these dates"}
         </span>
       </div>
       <div className="p-6 sm:p-7">
@@ -83,9 +84,10 @@ function RoomCard({ room, index, onSelect }) {
           </div>
           <button
             onClick={() => onSelect(room)}
-            className="flex items-center gap-2 border-b border-[#b39870] pb-1 text-[9px] font-bold uppercase tracking-[0.14em] transition hover:text-[#a47b46]"
+            disabled={!availableForDates}
+            className="flex items-center gap-2 border-b border-[#b39870] pb-1 text-[9px] font-bold uppercase tracking-[0.14em] transition hover:text-[#a47b46] disabled:cursor-not-allowed disabled:border-[#bdb9ae] disabled:text-[#929087]"
           >
-            View details <ArrowRight size={13} />
+            {availableForDates ? <>View details <ArrowRight size={13} /></> : "Choose other dates"}
           </button>
         </div>
       </div>
@@ -130,6 +132,14 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
       ),
     [rooms, bookings, checkIn, checkOut, guestCount],
   );
+  const showcaseRooms = useMemo(() => {
+    const availableIds = new Set(availableRooms.map((room) => room.id));
+    const orderedRooms = [
+      ...availableRooms,
+      ...rooms.filter((room) => !availableIds.has(room.id)),
+    ];
+    return orderedRooms.slice(0, Math.min(3, Math.max(2, rooms.length)));
+  }, [rooms, availableRooms]);
 
   const nights = Math.max(1, (new Date(`${checkOut}T00:00:00`) - new Date(`${checkIn}T00:00:00`)) / 86400000);
 
@@ -228,7 +238,7 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
       <header className="relative z-20 border-b border-[#e8e4da] bg-[#fbfaf7]">
         <div className="mx-auto flex h-[82px] max-w-7xl items-center justify-between px-5 lg:px-10">
           <a href="#home" className="flex items-center gap-3" aria-label={`${settings.name} home`}>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1d2822] text-[#d8bd91]"><Hotel size={19} /></span>
+            <img src={veloraLogo} alt="" className="h-10 w-10" />
             <span>
               <span className="block font-serif text-[22px] font-semibold leading-none tracking-tight">{settings.name}</span>
               <span className="mt-1 block text-[9px] uppercase tracking-[0.28em] text-[#8d8a7f]">a stay to remember</span>
@@ -414,9 +424,17 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
               </p>
             </div>
 
-            {availableRooms.length ? (
+            {showcaseRooms.length ? (
               <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {availableRooms.slice(0, 3).map((room, index) => <RoomCard key={room.id} room={room} index={index} onSelect={selectRoom} />)}
+                {showcaseRooms.map((room, index) => (
+                  <RoomCard
+                    key={room.id}
+                    room={room}
+                    index={index}
+                    onSelect={selectRoom}
+                    availableForDates={availableRooms.some((availableRoom) => availableRoom.id === room.id)}
+                  />
+                ))}
               </div>
             ) : (
               <div className="mt-10 border border-[#d9d4c8] bg-[#fbfaf7] px-6 py-12 text-center">
@@ -467,7 +485,7 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
         <div className="mx-auto grid max-w-7xl gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1d2822] text-[#d8bd91]"><Hotel size={19} /></span>
+              <img src={veloraLogo} alt="" className="h-10 w-10" />
               <span className="font-serif text-2xl">{settings.name}</span>
             </div>
             <p className="mt-4 max-w-xs text-xs leading-6 text-[#77796f]">A considered city stay, with a little more warmth in every detail.</p>

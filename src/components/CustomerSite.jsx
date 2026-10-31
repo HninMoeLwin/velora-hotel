@@ -102,6 +102,7 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
   const [sitePage, setSitePage] = useState(() => window.location.hash === "#all-rooms" ? "rooms" : "home");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [confirmation, setConfirmation] = useState("");
+  const [promoCode, setPromoCode] = useState("");
 
   useEffect(() => {
     const syncPage = () => setSitePage(window.location.hash === "#all-rooms" ? "rooms" : "home");
@@ -173,18 +174,24 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
       checkOut,
       guests: Number(guestCount),
       status: "Pending",
+      nightlyRate: nightlyPrice,
+      totalPrice: roomPrice,
       promoCode: promo?.code || "",
       promoPercent: promo?.percent || 0,
     };
     onBookingCreated(booking);
     setSelectedRoom(null);
     setBookingStep(false);
-    setConfirmation(`Thank you, ${guest}. Your request ${booking.id} has been sent to ${settings.name}. We'll be in touch soon.`);
+    setConfirmation(
+      `Thank you, ${guest}. Your request ${booking.id} has been sent to ${settings.name}. ${money(nightlyPrice)} per night × ${nights} nights = ${money(roomPrice)} total. We'll be in touch soon.`,
+    );
+    setPromoCode("");
     event.currentTarget.reset();
   };
 
   const selectRoom = (room) => {
     setConfirmation("");
+    setPromoCode("");
     setGuestCount(String(Math.min(Number(guestCount), room.capacity)));
     setSelectedRoom(room);
     setBookingStep(false);
@@ -203,9 +210,14 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
     window.setTimeout(() => document.getElementById(section)?.scrollIntoView({ behavior: "smooth" }), 0);
   };
 
-  const roomPrice = selectedRoom
-    ? selectedRoom.price * (1 - (selectedRoom.discount || 0) / 100) * nights
+  const baseNightlyPrice = selectedRoom
+    ? selectedRoom.price * (1 - (selectedRoom.discount || 0) / 100)
     : 0;
+  const activePromo = discounts.find(
+    (discount) => discount.code === promoCode.trim().toUpperCase() && discount.active,
+  );
+  const nightlyPrice = baseNightlyPrice * (1 - (activePromo?.percent || 0) / 100);
+  const roomPrice = nightlyPrice * nights;
 
   return (
     <div className="velora-site min-h-screen bg-[#f7f5f0] text-[#20251f]">
@@ -537,6 +549,7 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
                 <h2 className="mt-2 font-serif text-3xl">{selectedRoom.name}</h2>
                 <p className="mt-3 text-xs leading-5 text-white/75">{selectedRoom.description}</p>
                 <p className="mt-5 border-t border-white/20 pt-4 text-xs">{nights} nights · {guestCount} guests</p>
+                <p className="mt-1 text-xs text-white/70">{money(nightlyPrice)} per night</p>
                 <p className="mt-1 font-serif text-xl">{money(roomPrice)} <span className="font-sans text-[10px] text-white/60">estimated total</span></p>
               </div>
             </div>
@@ -556,7 +569,28 @@ export default function CustomerSite({ rooms, bookings, discounts, settings, onA
                 <label className="block text-[10px] font-semibold text-[#555a51]">Phone number<input name="phone" type="tel" autoComplete="tel" className="mt-1.5 w-full border border-[#dedacf] bg-white px-3 py-2.5 text-xs outline-none focus:border-[#b39870]" required /></label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="text-[10px] font-semibold text-[#555a51]">Guests<select value={guestCount} onChange={(event) => setGuestCount(event.target.value)} className="mt-1.5 w-full border border-[#dedacf] bg-white px-3 py-2.5 text-xs outline-none">{Array.from({ length: selectedRoom.capacity }, (_, index) => index + 1).map((count) => <option key={count} value={count}>{count} guest{count > 1 ? "s" : ""}</option>)}</select></label>
-                  <label className="text-[10px] font-semibold text-[#555a51]">Promo code <span className="font-normal text-[#929087]">(optional)</span><input name="code" placeholder="WELCOME10" className="mt-1.5 w-full border border-[#dedacf] bg-white px-3 py-2.5 text-xs uppercase outline-none focus:border-[#b39870]" /></label>
+                  <label className="text-[10px] font-semibold text-[#555a51]">Promo code <span className="font-normal text-[#929087]">(optional)</span><input name="code" value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="WELCOME10" className="mt-1.5 w-full border border-[#dedacf] bg-white px-3 py-2.5 text-xs uppercase outline-none focus:border-[#b39870]" /></label>
+                </div>
+                <div className="space-y-2 border-y border-[#e8e4da] py-4 text-xs">
+                  <div className="flex justify-between text-[#77796f]">
+                    <span>Room rate per night</span><span>{money(baseNightlyPrice)}</span>
+                  </div>
+                  <div className="flex justify-between text-[#77796f]">
+                    <span>{nights} night{nights === 1 ? "" : "s"}</span><span>{money(baseNightlyPrice * nights)}</span>
+                  </div>
+                  {activePromo && (
+                    <div className="flex justify-between text-emerald-700">
+                      <span>{activePromo.code} discount ({activePromo.percent}%)</span>
+                      <span>-{money(baseNightlyPrice * nights - roomPrice)}</span>
+                    </div>
+                  )}
+                  {promoCode.trim() && !activePromo && (
+                    <p className="text-rose-600">This promo code is not active.</p>
+                  )}
+                  <div className="flex justify-between border-t border-[#e8e4da] pt-3 font-bold text-[#1d2822]">
+                    <span>Estimated total</span><span>{money(roomPrice)}</span>
+                  </div>
+                  <p className="text-right text-[10px] text-[#77796f]">{money(nightlyPrice)} per night after discounts</p>
                 </div>
                 <div className="flex items-start gap-2 border-t border-[#e8e4da] pt-4 text-[10px] leading-5 text-[#77796f]"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-[#a47b46]" />No payment is taken now. Your request will be reviewed by our team.</div>
                 <button type="submit" className="flex w-full items-center justify-center gap-2 bg-[#1d2822] px-5 py-3.5 text-[10px] font-bold uppercase tracking-[0.15em] text-white transition hover:bg-[#34483c]">Send booking request <ArrowRight size={14} className="text-[#d8bd91]" /></button>

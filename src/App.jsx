@@ -224,6 +224,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [profileModal, setProfileModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [profile, setProfile] = useState({
     name: "Admin User",
     email: "admin@velorahotel.com",
@@ -238,27 +239,31 @@ export default function App() {
   };
 
   const room = (id) => rooms.find((r) => r.id === Number(id));
+  const bookingNights = (booking) =>
+    Math.max(1, (new Date(booking.checkOut) - new Date(booking.checkIn)) / 86400000);
+  const bookingNightlyRate = (booking) => {
+    const roomItem = room(booking.roomId);
+    return booking.nightlyRate ??
+      (roomItem?.price || 0) *
+        (1 - (roomItem?.discount || 0) / 100) *
+        (1 - (booking.promoPercent || 0) / 100);
+  };
+  const bookingTotal = (booking) =>
+    booking.totalPrice ?? bookingNightlyRate(booking) * bookingNights(booking);
   const confirmed = bookings.filter((b) => b.status === "Confirmed").length;
   const pending = bookings.filter((b) => b.status === "Pending").length;
   const available = rooms.filter((r) => r.status === "Available").length;
 
   const revenue = bookings
     .filter((b) => b.status === "Confirmed")
-    .reduce(
-      (sum, b) =>
-        sum +
-        (room(b.roomId)?.price || 0) *
-          Math.max(1, (new Date(b.checkOut) - new Date(b.checkIn)) / 86400000) *
-          (1 - (room(b.roomId)?.discount || 0) / 100),
-      0,
-    );
+    .reduce((sum, booking) => sum + bookingTotal(booking), 0);
 
   const navs = [
     ["Overview", LayoutDashboard],
     ["Bookings", CalendarDays],
     ["Rooms & Suites", BedDouble],
     ["Discounts", BadgePercent],
-    ["Guest Directory", Users],
+    ["User Management", Users],
     ["Hotel Settings", Settings2],
   ];
 
@@ -276,9 +281,7 @@ export default function App() {
         .filter((b) => b.status === "Confirmed")
         .filter((b) => new Date(b.checkIn).getMonth() === index)
         .reduce((sum, booking) => {
-          const roomItem = room(booking.roomId);
-          const nights = Math.max(1, (new Date(booking.checkOut) - new Date(booking.checkIn)) / 86400000);
-          return sum + (roomItem?.price || 0) * nights * (1 - (roomItem?.discount || 0) / 100);
+          return sum + bookingTotal(booking);
         }, 0);
       return { month, value: monthValue };
     });
@@ -329,6 +332,11 @@ export default function App() {
 
     const code = String(form.get("code")).trim().toUpperCase();
     const promo = discounts.find((d) => d.code === code && d.active);
+    const bookedRoom = room(roomId);
+    const nightlyRate = (bookedRoom?.price || 0) *
+      (1 - (bookedRoom?.discount || 0) / 100) *
+      (1 - (promo?.percent || 0) / 100);
+    const nights = Math.max(1, (new Date(checkOut) - new Date(checkIn)) / 86400000);
 
     setBookings((prev) => [{
       id: `VB-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -340,6 +348,8 @@ export default function App() {
       checkOut,
       guests: +form.get("guests"),
       status: "Pending",
+      nightlyRate,
+      totalPrice: nightlyRate * nights,
       promoCode: promo?.code || "",
       promoPercent: promo?.percent || 0,
     }, ...prev]);
@@ -353,6 +363,25 @@ export default function App() {
       (filter === "All" || b.status === filter) &&
       `${b.id} ${b.guest} ${b.email} ${room(b.roomId)?.name || ""}`.toLowerCase().includes(query.toLowerCase()),
   );
+  const guestUsers = useMemo(() => {
+    const users = new Map();
+    bookings.forEach((booking) => {
+      const email = String(booking.email || "").trim();
+      const key = email.toLowerCase();
+      const existing = users.get(key);
+      if (existing) {
+        existing.bookingCount += 1;
+      } else {
+        users.set(key, {
+          email,
+          name: booking.guest,
+          phone: booking.phone,
+          bookingCount: 1,
+        });
+      }
+    });
+    return [...users.values()];
+  }, [bookings]);
 
   const shellClass = darkMode ? "min-h-screen bg-[#020817] text-slate-100" : "min-h-screen bg-[#f6f7fb] text-slate-800";
   const panelClass = darkMode ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white text-slate-800";
@@ -849,28 +878,47 @@ export default function App() {
               </section>
             )}
 
-            {page === "Guest Directory" && (
+            {page === "User Management" && (
               <section>
-                <p className={`mb-5 text-sm ${subtleClass}`}>Guest contact details from existing reservations.</p>
+                <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className={`text-sm ${subtleClass}`}>Manage guest profiles and contact details collected from bookings.</p>
+                    <p className="mt-1 text-xs text-slate-400">Guest records are based on booking information; they are not login accounts.</p>
+                  </div>
+                  <span className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">{guestUsers.length} guests</span>
+                </div>
                 <div className={`overflow-hidden rounded-2xl border ${panelClass}`}>
                   <div className="border-b p-4">
                     <SearchBox query={query} setQuery={setQuery} />
                   </div>
 
-                  {[...new Map(bookings.map((b) => [b.email, b])).values()]
-                    .filter((b) => `${b.guest} ${b.email} ${b.phone}`.toLowerCase().includes(query.toLowerCase()))
-                    .map((b) => (
-                      <div key={b.email} className="flex flex-wrap items-center gap-4 border-b p-5 last:border-0">
+                  {guestUsers
+                    .filter((user) => `${user.name} ${user.email} ${user.phone}`.toLowerCase().includes(query.toLowerCase()))
+                    .map((user) => (
+                      <div key={user.email} className="flex flex-wrap items-center gap-4 border-b p-5 last:border-0">
                         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 font-bold text-amber-800">
-                          {b.guest.split(" ").map((s) => s[0]).join("")}
+                          {user.name.split(" ").map((part) => part[0]).join("")}
                         </div>
                         <div className="min-w-[160px] flex-1">
-                          <p className="font-bold">{b.guest}</p>
-                          <p className="mt-1 text-xs text-slate-400"><Mail className="mr-1 inline" size={12} />{b.email}</p>
+                          <p className="font-bold">{user.name}</p>
+                          <p className="mt-1 text-xs text-slate-400"><Mail className="mr-1 inline" size={12} />{user.email}</p>
                         </div>
-                        <p className="text-xs text-slate-500"><Phone className="mr-1 inline" size={13} />{b.phone}</p>
+                        <div className="text-xs text-slate-500">
+                          <p><Phone className="mr-1 inline" size={13} />{user.phone}</p>
+                          <p className="mt-1">{user.bookingCount} booking{user.bookingCount === 1 ? "" : "s"}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUser(user)}
+                          className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                        >
+                          <Pencil size={14} /> Edit guest
+                        </button>
                       </div>
                     ))}
+                  {!guestUsers.some((user) => `${user.name} ${user.email} ${user.phone}`.toLowerCase().includes(query.toLowerCase())) && (
+                    <p className="p-8 text-center text-sm text-slate-400">No guests found.</p>
+                  )}
                 </div>
               </section>
             )}
@@ -1055,6 +1103,40 @@ export default function App() {
         </Modal>
       )}
 
+      {selectedUser && (
+        <Modal title="Edit guest profile" close={() => setSelectedUser(null)}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              const name = String(form.get("guestName")).trim();
+              const email = String(form.get("guestEmail")).trim();
+              const phone = String(form.get("guestPhone")).trim();
+              const existingEmail = selectedUser.email.toLowerCase();
+              if (guestUsers.some((user) => user.email.toLowerCase() === email.toLowerCase() && user.email.toLowerCase() !== existingEmail)) {
+                notify("A guest with this email already exists");
+                return;
+              }
+              setBookings((previous) =>
+                previous.map((booking) =>
+                  String(booking.email || "").trim().toLowerCase() === existingEmail
+                    ? { ...booking, guest: name, email, phone }
+                    : booking,
+                ),
+              );
+              setSelectedUser(null);
+              notify("Guest profile updated");
+            }}
+            className="space-y-4"
+          >
+            <Field label="Full name" name="guestName" defaultValue={selectedUser.name} />
+            <Field label="Email address" name="guestEmail" type="email" defaultValue={selectedUser.email} />
+            <Field label="Phone number" name="guestPhone" type="tel" defaultValue={selectedUser.phone} />
+            <Actions close={() => setSelectedUser(null)} label="Save guest profile" />
+          </form>
+        </Modal>
+      )}
+
       {selectedBooking && (
         <Modal title={`Booking details - ${selectedBooking.id}`} close={() => setSelectedBooking(null)}>
           <div className="space-y-4 text-sm">
@@ -1081,6 +1163,19 @@ export default function App() {
               <div className="rounded-2xl border p-4">
                 <p className="text-xs text-slate-500">Check-out</p>
                 <p className="mt-1 font-bold">{selectedBooking.checkOut}</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm">
+              <div className="flex justify-between text-slate-600">
+                <span>Price per night</span><span>{money(bookingNightlyRate(selectedBooking))}</span>
+              </div>
+              <div className="mt-2 flex justify-between text-slate-600">
+                <span>{bookingNights(selectedBooking)} night{bookingNights(selectedBooking) === 1 ? "" : "s"}</span>
+                <span>{money(bookingTotal(selectedBooking))}</span>
+              </div>
+              <div className="mt-3 flex justify-between border-t border-amber-200 pt-3 font-bold text-[#1d2822]">
+                <span>Total price</span><span>{money(bookingTotal(selectedBooking))}</span>
               </div>
             </div>
 

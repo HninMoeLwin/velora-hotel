@@ -14,6 +14,7 @@
 - Room-level discount percentages
 - Promo code creation, activation/pause and deletion
 - Guest directory and hotel settings
+- Separate admin and guest accounts, with admin account management and confirmed-booking guest registration
 - Booking date-overlap validation for the same room category
 - Responsive layout and mobile sidebar
 
@@ -25,4 +26,8 @@
 5. Open the URL printed by Vite.
 
 ## Notes
-This is a front-end learning/demo project. It has no real authentication, backend, payment processing, or email service. Demo data persists in the same browser's localStorage. Room photos use remote Unsplash URLs.
+This is a front-end learning/demo project with no backend, payment processing, or email service. Account and demo data persist in the same browser's localStorage, so accounts are not shared across browsers or devices and this authentication is not suitable for production.
+
+- Admin demo login: `admin@velorahotel.com` / `demo123`
+- The demo admin is seeded into **User Management** on first load. Admins can create, edit, activate/deactivate, and delete admin accounts there; at least one active admin is required.
+- Guests can create their own account from **Guest sign in** only with an email that has a confirmed booking, then choose a password. Guests can access only their guest dashboard.
